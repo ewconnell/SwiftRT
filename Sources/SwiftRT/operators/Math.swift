@@ -86,11 +86,11 @@ public extension PlatformService {
 // Tensor extension
 public extension TensorView where Element: Real {
     // make glboal function visible for extension implementations
-//    @differentiable(where Self: DifferentiableTensorView)
+    @differentiable(where Self: DifferentiableTensorView)
     @inlinable
     func abs(_ x: Self) -> Self { Platform.service.abs(x) }
     
-//    @differentiable(where Self: DifferentiableTensorView)
+    @differentiable(where Self: DifferentiableTensorView)
     @inlinable
     func abs() -> Self { abs(self) }
 }
