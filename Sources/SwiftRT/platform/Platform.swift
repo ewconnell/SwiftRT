@@ -37,7 +37,9 @@ public final class Platform {
     @usableFromInline static var bufferIdCounter: Int = 0
 
     // maybe thread local
-    public static var service: PlatformAPI = CpuService()
+    // TODO(TF-1181): Fix crash regarding existential. Use concrete type for now.
+    // public static var service: PlatformAPI = CpuService()
+    public static var service = CpuService()
     
     //--------------------------------------------------------------------------
     /// the Platform log writing object
