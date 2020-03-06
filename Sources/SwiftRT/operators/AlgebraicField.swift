@@ -63,7 +63,8 @@ public extension TensorView where Element: AdditiveArithmetic {
 
     @inlinable
     static func += (lhs: inout Self, rhs: Element) {
-        lhs = add(lhs, Self(repeating: rhs, like: lhs))
+        let r = Self(repeating: rhs, like: lhs)
+        lhs = add(lhs, r)
     }
 
     @inlinable

@@ -240,12 +240,14 @@ public extension TensorView {
         self = Self.create(for: value, shape, name)
     }
 
+    /*
     @inlinable
     @differentiable(where Self: DifferentiableTensorView)
     init(repeating value: Element, to bounds: Bounds.Tuple, name: String? = nil)
     {
         self.init(repeating: value, to: Bounds(bounds), name: name)
     }
+     */
     
     //--------------------------------------------------------------------------
     /// repeating element

@@ -217,8 +217,9 @@ public extension TensorView {
     /// repeated(bounds:
     @inlinable
     func repeated(to bounds: Bounds) -> Self {
-        return Self(shape: shape.repeated(to: bounds),
-                    buffer: buffer, offset: offset, shared: shared)
+        let newShape = shape.repeated(to: bounds)
+        return Self(
+            shape: newShape, buffer: buffer, offset: offset, shared: shared)
     }
     ///
     @inlinable

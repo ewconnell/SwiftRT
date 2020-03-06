@@ -418,16 +418,21 @@ public extension ShapeProtocol {
     /// repeated(repeatedBounds:
     @inlinable
     func repeated(to repeatedBounds: Bounds) -> Self {
-        // make sure the bounds are compatible
-        assert({
+        func shapesAreCompatible() -> Bool {
             for i in 0..<Self.rank {
                 if bounds[i] != 1 && bounds[i] != repeatedBounds[i] {
                     return false
                 }
             }
             return true
-        }(), "repeated tensor bounds must be either 1" +
-            " or match the repeated tensor bounds")
+        }
+
+        assert(
+            shapesAreCompatible(),
+            """
+            repeated tensor bounds must be either 1 or match \
+            the repeated tensor bounds
+            """)
 
         // compute strides, setting stride to 0 for repeated dimensions
         var repeatedStrides = Bounds.zero

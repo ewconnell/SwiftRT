@@ -106,8 +106,14 @@ extension Int8: AnyInteger {
     @inlinable public var normInt32  : Int32  { return asInt32 }
     @inlinable public var normUInt   : UInt   { return asUInt }
     @inlinable public var normInt    : Int    { return asInt }
-    @inlinable public var normFloat  : Float  { return self == 0 ? 0 : (Float(self) + 1) * Int8.normScalef }
-    @inlinable public var normDouble : Double { return self == 0 ? 0 : (Double(self) + 1) * Int8.normScale }
+    @inlinable public var normFloat  : Float  {
+        if self == 0 { return 0 }
+        return (Float(self) + 1) * Int8.normScalef
+    }
+    @inlinable public var normDouble : Double {
+        if self == 0 { return 0 }
+        return (Double(self) + 1) * Int8.normScale
+    }
     @inlinable public var normBool   : Bool   { return asBool }
     
     @inlinable public var isFiniteValue: Bool { return true }

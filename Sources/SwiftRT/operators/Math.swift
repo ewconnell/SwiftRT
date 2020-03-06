@@ -374,13 +374,14 @@ public extension TensorView where Element: Real {
     @inlinable
 //    @differentiable(where Self: DifferentiableTensorView)
     static func **(_ x: Self, _ y: Element) -> Self {
-        y == 2 ? x.squared() : x ** Self(repeating: y, like: x)
+        if y == 2 { return x.squared() }
+        return pow(x, Self(repeating: y, like: x))
     }
     
     @inlinable
 //    @differentiable(where Self: DifferentiableTensorView)
     static func **(_ x: Element, _ y: Self) -> Self {
-        Self(repeating: x, like: y) ** y
+        pow(Self(repeating: x, like: y), y)
     }
 }
 
