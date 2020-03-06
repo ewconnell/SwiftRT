@@ -11,6 +11,29 @@ import Darwin.C
 #endif
 
 //------------------------------------------------------------------------------
+@available(OSX 10.13, *)
+func runCMake(args: [String], workingDir: String) {
+    let task = Process()
+    task.currentDirectoryURL = URL(fileURLWithPath: workingDir, isDirectory: true)
+    task.executableURL = URL(fileURLWithPath: "/usr/local/bin/cmake")
+    task.arguments = args
+    
+    do {
+        let outputPipe = Pipe()
+        task.standardOutput = outputPipe
+        try task.run()
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
+        if task.terminationStatus == 0 {
+            let output = String(decoding: outputData, as: UTF8.self)
+            print(output)
+        }
+    } catch {
+        print(error)
+    }
+}
+
+//------------------------------------------------------------------------------
 // determine platform build type
 let validPlatforms = Set(arrayLiteral: "cpu", "cuda")
 let environment = ProcessInfo.processInfo.environment
@@ -54,28 +77,6 @@ if buildCuda {
     exclusions.append("platform/cuda")
 }
 
-//------------------------------------------------------------------------------
-@available(OSX 10.13, *)
-func runCMake(args: [String], workingDir: String) {
-    let task = Process()
-    task.currentDirectoryURL = URL(fileURLWithPath: workingDir, isDirectory: true)
-    task.executableURL = URL(fileURLWithPath: "/usr/local/bin/cmake")
-    task.arguments = args
-    
-    do {
-        let outputPipe = Pipe()
-        task.standardOutput = outputPipe
-        try task.run()
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        task.waitUntilExit()
-        if task.terminationStatus == 0 {
-            let output = String(decoding: outputData, as: UTF8.self)
-            print(output)
-        }
-    } catch {
-        print(error)
-    }
-}
 
 //==============================================================================
 // package specification
