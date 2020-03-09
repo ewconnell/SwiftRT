@@ -22,29 +22,27 @@ import Foundation
 /// conform to this protocol
 ///
 public protocol TensorView: Logging {
-    /// the type of element stored by the tensor
-    associatedtype Element
+    /// tensor bounds
+    associatedtype Bounds: ShapeBounds
     /// tye type of element storage buffer
     associatedtype Buffer: StorageBuffer
         where Buffer.Element == Element
-    /// tensor shape
-    associatedtype Shape: ShapeProtocol
-    /// alias used to simplify api parameters
-    typealias Bounds = Shape.Bounds
-
+    /// the type of element stored by the tensor
+    associatedtype Element
+    
     /// A concrete type used in generics to pass Boolean values
     associatedtype BoolView: TensorView
-        where BoolView.Element == Bool, BoolView.Shape == Shape
+        where BoolView.Element == Bool, BoolView.Bounds == Bounds
     /// A concrete type used in generics to return index results
     associatedtype IndexView: TensorView
-        where IndexView.Element == IndexType, IndexView.Shape == Shape
+        where IndexView.Element == IndexType, IndexView.Bounds == Bounds
     
     //--------------------------------------------------------------------------
     // properties
     /// a label for the type used as a default name in diagnostics
     static var diagnosticName: String { get }
     /// the shape of the view used for indexing
-    var shape: Shape { get }
+    var shape: Shape<Bounds> { get }
     /// class reference to the underlying platform element buffer
     var buffer: Buffer { get set }
     /// the linear element offset where the view begins
@@ -54,7 +52,7 @@ public protocol TensorView: Logging {
     
     //--------------------------------------------------------------------------
     /// fully specified used for creating tensors
-    init(shape: Shape, buffer: Buffer, offset: Int, shared: Bool)
+    init(shape: Shape<Bounds>, buffer: Buffer, offset: Int, shared: Bool)
 
     //--------------------------------------------------------------------------
     /// creates a new dense tensor of the same type with the specified bounds
@@ -73,7 +71,7 @@ public extension TensorView {
     /// `bufferElements`
     /// - Returns: a buffer collection that can be used to iterate the shape
     @inlinable
-    func bufferElements() -> BufferElements<Element, Shape> {
+    func bufferElements() -> BufferElements<Element, Bounds> {
         // read the elements buffer using the current queue
         Platform.service.read(self)
     }
@@ -83,7 +81,7 @@ public extension TensorView {
     /// - Returns: an element buffer that can be used to iterate the shape
     @inlinable
     mutating func mutableBufferElements(willOverwrite: Bool = true)
-        -> MutableBufferElements<Element, Shape>
+        -> MutableBufferElements<Element, Bounds>
     {
         Platform.service.write(&self, willOverwrite: willOverwrite)
     }
@@ -202,7 +200,7 @@ public extension TensorView {
     /// the number of dimensions in the view
     @_transparent
     @inlinable
-    static var rank: Int { Shape.rank }
+    static var rank: Int { Bounds.rank }
 
     /// the strided element span of this view
     @_transparent
@@ -263,22 +261,37 @@ public extension TensorView {
     func view(from lower: Bounds, to upper: Bounds,
               with strides: Bounds? = nil) -> Self
     {
-        createView(from: lower, to: upper,
-                   with: strides ?? self.strides, shared: self.shared)
+        createView(from: lower, bounds: upper &- lower,
+                   with: strides, shared: self.shared)
+    }
+    
+    @inlinable
+    func view(from lower: Bounds, bounds: Bounds,
+              with strides: Bounds? = nil) -> Self
+    {
+        createView(from: lower, bounds: bounds,
+                   with: strides, shared: self.shared)
     }
     
     //--------------------------------------------------------------------------
     /// sharedView
-    /// Creates a a subview that can be shared by multiple writers
+    /// Creates a subview that can be shared by multiple writers
     @inlinable
     mutating func sharedView(from lower: Bounds.Tuple, to upper: Bounds.Tuple,
                              with strides: Bounds.Tuple? = nil) -> Self
     {
         sharedView(from: Bounds(lower), to: Bounds(upper), with: Bounds(strides))
     }
-    
+
     @inlinable
     mutating func sharedView(from lower: Bounds, to upper: Bounds,
+                             with strides: Bounds? = nil) -> Self
+    {
+        sharedView(from: lower, bounds: upper &- lower, with: strides)
+    }
+    
+    @inlinable
+    mutating func sharedView(from lower: Bounds, bounds: Bounds,
                              with strides: Bounds? = nil) -> Self
     {
         // copy the parent view if it is not uniquely held before
@@ -291,23 +304,26 @@ public extension TensorView {
             buffer = Buffer(copying: buffer)
         }
         
-        return createView(from: lower, to: upper,
-                          with: strides ?? self.strides, shared: true)
+        return createView(from: lower, bounds: bounds,
+                          with: strides, shared: true)
     }
     
     //--------------------------------------------------------------------------
     /// createView
     /// Returns a view of the bufferRef relative to this view
     @usableFromInline
-    internal func createView(from lower: Bounds, to upper: Bounds,
-                             with strides: Bounds, shared: Bool) -> Self
+    internal func createView(from lower: Bounds,
+                             bounds: Bounds,
+                             with strides: Bounds? = nil,
+                             shared: Bool) -> Self
     {
         // validate
-        assert(shape.contains(lower) && shape.contains(upper &- 1))
+        assert(shape.contains(lower) && shape.contains(lower &+ (bounds &- 1)))
 
         // the subview offset is the view offset plus the offset of the position
+        let viewStrides = strides ?? self.strides
         let viewOffset = offset + shape.linearIndex(of: lower)
-        let viewShape = Shape(bounds: upper &- lower, strides: strides)
+        let viewShape = Shape<Bounds>(bounds: bounds, strides: viewStrides)
         return Self(shape: viewShape, buffer: buffer,
                     offset: viewOffset, shared: shared)
     }
@@ -350,7 +366,7 @@ public extension TensorView where Element: Codable {
         let bounds = try container.decode(Bounds.self, forKey: .bounds)
         var dataContainer = try container.nestedUnkeyedContainer(forKey: .data)
 
-        self = Self.create(Self.Shape(bounds: bounds), name)
+        self = Self.create(Shape<Bounds>(bounds: bounds), name)
 
         assert(self.count == dataContainer.count)
         var mutableElements = mutableBufferElements()

@@ -40,8 +40,7 @@ public extension PlatformService {
 
         var lower = T.Bounds.zero
         for tensor in tensors {
-            let upper = lower &+ tensor.bounds
-            var view = result.sharedView(from: lower, to: upper)
+            var view = result.sharedView(from: lower, bounds: tensor.bounds)
             copy(from: tensor, to: &view)
             lower[axis] += tensor.bounds[axis]
         }
@@ -163,19 +162,20 @@ public extension TensorView {
 public extension PlatformService {
     @inlinable
     func fillWithIndex<T>(_ result: inout T)
-        where T: TensorView, T.Element: AnyNumeric & RangeBound
+        where T: TensorView, T.Element: RangeBound
     {
-        let count = T.Element(any: result.count)
+        let count = T.Element(exactly: result.count)!
         let range = StridedRange(from: 0, to: count, by: 1)
         fill(&result, with: range)
     }
 }
 
-public extension TensorView where Element: AnyNumeric & RangeBound {
+public extension TensorView where Element: RangeBound {
     @inlinable
     func filledWithIndex() -> Self {
         var result = createDense()
-        let range = StridedRange(from: 0, to: Element(any: result.count), by: 1)
+        let count = Element(exactly: result.count)!
+        let range = StridedRange(from: 0, to: count, by: 1)
         fill(&result, with: range)
         return result
     }

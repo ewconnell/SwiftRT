@@ -23,7 +23,7 @@ import Numerics
 @inlinable
 public func cast<T, U>(_ other: U) -> T where
     T: TensorView, T.Element: AnyConvertable,
-    U: TensorView, U.Element: AnyConvertable, U.Shape == T.Shape
+    U: TensorView, U.Element: AnyConvertable, U.Bounds == T.Bounds
 {
     Platform.service.cast(other)
 }
@@ -33,7 +33,7 @@ public extension PlatformService {
     @inlinable
     func cast<T, U>(_ other: U) -> T where
         T: TensorView, T.Element: AnyConvertable,
-        U: TensorView, U.Element: AnyConvertable, U.Shape == T.Shape
+        U: TensorView, U.Element: AnyConvertable, U.Bounds == T.Bounds
     {
         var result = T.create(other.shape.dense, nil)
         var resultBuffer = write(&result)
@@ -358,31 +358,12 @@ public extension PlatformService {
     }
 }
 
-infix operator ** : MultiplicationPrecedence
-
 // Tensor extension
 public extension TensorView where Element: Real {
     // make glboal function visible for extension implementations
-    @differentiable(where Self: DifferentiableTensorView)
     @inlinable
+    @differentiable(where Self: DifferentiableTensorView)
     func pow(_ x: Self, _ y: Self) -> Self { Platform.service.pow(x, y) }
-    
-    @differentiable(where Self: DifferentiableTensorView)
-    @inlinable
-    static func **(_ x: Self, _ y: Self) -> Self { Platform.service.pow(x, y) }
-    
-    @inlinable
-//    @differentiable(where Self: DifferentiableTensorView)
-    static func **(_ x: Self, _ y: Element) -> Self {
-        if y == 2 { return x.squared() }
-        return pow(x, Self(repeating: y, like: x))
-    }
-    
-    @inlinable
-//    @differentiable(where Self: DifferentiableTensorView)
-    static func **(_ x: Element, _ y: Self) -> Self {
-        pow(Self(repeating: x, like: y), y)
-    }
 }
 
 //==============================================================================

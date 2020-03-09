@@ -240,23 +240,23 @@ class test_Shape: XCTestCase {
     func test_perfInitShape2() {
         #if !DEBUG
         var shape = Shape2((1, 1))
-        let index = Shape2.Index(Shape2.Bounds.one, sequenceIndex: 5)
+        let index = Shape2.Index(Bounds2.one, 5)
         var i = 0
         self.measure {
             for _ in 0..<1000000 {
-                let a = Shape2(bounds: Shape2.Bounds((3, 4)))
+                let a = Shape2(bounds: Bounds2((3, 4)))
                 let b = a.columnMajor
                 let ds = a == b ? b.dense : a.dense
-                let positive = Shape2.makePositive(bounds: Shape2.Bounds((1, -1)))
+                let positive = Shape2.makePositive(bounds: Bounds2((1, -1)))
                 let c = Shape2(bounds: positive)
-                let r = Shape2(bounds: Shape2.Bounds.one).repeated(to: a.bounds)
+                let r = Shape2(bounds: Bounds2.one).repeated(to: a.bounds)
                 let j = a.joined(with: [ds, c, r], alongAxis: 1)
                 let t = j.transposed()
                 shape = t
                 i = shape[index]
             }
         }
-        XCTAssert(shape.bounds == Shape2.Bounds((13, 3)) && i > 0)
+        XCTAssert(shape.bounds == Bounds2((13, 3)) && i > 0)
         #endif
     }
 }
