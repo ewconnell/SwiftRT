@@ -18,7 +18,7 @@ import Numerics
 // Platform types
 #if canImport(CCuda)
 public typealias PlatformServiceType = CudaService
-public typealias TensorBuffer<Element> = DiscreetDeviceBuffer<Element>
+public typealias TensorBuffer<Element> = ReplicatedBuffer<Element>
 #else
 public typealias PlatformServiceType = CpuService
 public typealias TensorBuffer<Element> = CpuBuffer<Element>
@@ -31,12 +31,6 @@ public typealias Bounds2 = SIMD2<Int>
 public typealias Bounds3 = SIMD3<Int>
 public typealias Bounds4 = SIMD4<Int>
 public typealias Bounds5 = SIMD5<Int>
-
-public typealias Shape1 = Shape<SIMD1<Int>>
-public typealias Shape2 = Shape<SIMD2<Int>>
-public typealias Shape3 = Shape<SIMD3<Int>>
-public typealias Shape4 = Shape<SIMD4<Int>>
-public typealias Shape5 = Shape<SIMD5<Int>>
 
 //==============================================================================
 // Default Tensor types

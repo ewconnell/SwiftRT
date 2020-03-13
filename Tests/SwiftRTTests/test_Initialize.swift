@@ -40,8 +40,8 @@ class test_Initialize: XCTestCase {
     // test_copy
     // tests copying from source to destination view
     func test_copy() {
-        let v1 = IndexVector(with: 1...3)
-        var v2 = IndexVector(with: repeatElement(0, count: 3))
+        let v1 = IndexVector(1...3)
+        var v2 = IndexVector(repeatElement(0, count: 3))
         SwiftRT.copy(from: v1, to: &v2)
         XCTAssert(v1 == [1, 2, 3])
     }
@@ -80,7 +80,7 @@ class test_Initialize: XCTestCase {
     //--------------------------------------------------------------------------
     // test_indenting
     func test_indenting() {
-        let v = Vector(with: 0..<4)
+        let v = Vector(0..<4)
         let m = Matrix(indenting: v)
         XCTAssert(m.bounds == [1, v.count])
     }
@@ -88,7 +88,7 @@ class test_Initialize: XCTestCase {
     //--------------------------------------------------------------------------
     // test_padding
     func test_padding() {
-        let v = Vector(with: 0..<4)
+        let v = Vector(0..<4)
         let m = Matrix(padding: v)
         XCTAssert(m.bounds == [v.count, 1])
     }
@@ -147,7 +147,7 @@ class test_Initialize: XCTestCase {
     // test_repeatElement
     func test_repeatElement() {
         let value: Int32 = 42
-        let volume = IndexVolume(element: value).repeated(to: (2, 3, 10))
+        let volume = IndexVolume(element: value).repeated(to: 2, 3, 10)
         let expected = [Int32](repeating: value, count: volume.count)
         XCTAssert(volume == expected)
     }
@@ -155,7 +155,7 @@ class test_Initialize: XCTestCase {
     //--------------------------------------------------------------------------
     // test_repeatRowVector
     func test_repeatRowVector() {
-        let matrix = IndexMatrix(1, 5, with: 0...4).repeated(to: (5, 5))
+        let matrix = IndexMatrix(1, 5, with: 0...4).repeated(to: 5, 5)
         XCTAssert(matrix == [
             0, 1, 2, 3, 4,
             0, 1, 2, 3, 4,
@@ -168,7 +168,7 @@ class test_Initialize: XCTestCase {
     //--------------------------------------------------------------------------
     // test_repeatColVector
     func test_repeatColVector() {
-        let matrix = IndexMatrix(5, 1, with: 0...4).repeated(to: (5, 5))
+        let matrix = IndexMatrix(5, 1, with: 0...4).repeated(to: 5, 5)
         XCTAssert(matrix == [
             0, 0, 0, 0, 0,
             1, 1, 1, 1, 1,

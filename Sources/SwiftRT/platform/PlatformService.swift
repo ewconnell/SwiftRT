@@ -85,10 +85,11 @@ public extension PlatformService {
     /// - Returns: a tensor and an associated `MutableBufferElements`
     /// that can be used to iterate the shape
     @inlinable
-    func createResult<T>(like other: T, with shape: Shape<T.Bounds>, name: String? = nil)
+    func createResult<T>(like other: T, with shape: Shape<T.Bounds>,
+                         name: String? = nil)
         -> (T, MutableBufferElements<T.Element, T.Bounds>) where T: TensorView
     {
-        var result = other.createDense(with: shape.dense, name: name)
+        var result = other.createDense(with: shape, name: name)
         let resultBuffer = write(&result)
         assert(result.isUniquelyReference())
         return (result, resultBuffer)

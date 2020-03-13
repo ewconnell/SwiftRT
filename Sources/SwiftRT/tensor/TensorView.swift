@@ -22,14 +22,12 @@ import Foundation
 /// conform to this protocol
 ///
 public protocol TensorView: Logging {
-    /// tensor bounds
+    /// tensor shape
     associatedtype Bounds: ShapeBounds
     /// tye type of element storage buffer
-    associatedtype Buffer: StorageBuffer
-        where Buffer.Element == Element
+    associatedtype Buffer: StorageBuffer where Buffer.Element == Element
     /// the type of element stored by the tensor
     associatedtype Element
-    
     /// A concrete type used in generics to pass Boolean values
     associatedtype BoolView: TensorView
         where BoolView.Element == Bool, BoolView.Bounds == Bounds
@@ -219,11 +217,7 @@ public extension TensorView {
         return Self(
             shape: newShape, buffer: buffer, offset: offset, shared: shared)
     }
-    ///
-    @inlinable
-    func repeated(to bounds: Bounds.Tuple) -> Self {
-        repeated(to: Bounds(bounds))
-    }
+
     /// isUniquelyReference
     /// `true` if this view is the only one holding a reference to bufferRef
     @inlinable
@@ -239,8 +233,8 @@ public extension TensorView {
     /// makePositive(index:
     @inlinable
     @_semantics("autodiff.nonvarying")
-    func makePositive(index: Bounds.Tuple) -> Bounds {
-        var result = Bounds(index)
+    func makePositive(index: Bounds) -> Bounds {
+        var result = index
         for i in 0..<Bounds.rank {
             if result[i] < 0 { result[i] += bounds[i] }
         }
@@ -250,13 +244,6 @@ public extension TensorView {
     //--------------------------------------------------------------------------
     /// view
     /// Creates subview
-    @inlinable
-    func view(from lower: Bounds.Tuple, to upper: Bounds.Tuple,
-              with strides: Bounds.Tuple? = nil) -> Self
-    {
-        view(from: Bounds(lower), to: Bounds(upper), with: Bounds(strides))
-    }
-    
     @inlinable
     func view(from lower: Bounds, to upper: Bounds,
               with strides: Bounds? = nil) -> Self
@@ -276,13 +263,6 @@ public extension TensorView {
     //--------------------------------------------------------------------------
     /// sharedView
     /// Creates a subview that can be shared by multiple writers
-    @inlinable
-    mutating func sharedView(from lower: Bounds.Tuple, to upper: Bounds.Tuple,
-                             with strides: Bounds.Tuple? = nil) -> Self
-    {
-        sharedView(from: Bounds(lower), to: Bounds(upper), with: Bounds(strides))
-    }
-
     @inlinable
     mutating func sharedView(from lower: Bounds, to upper: Bounds,
                              with strides: Bounds? = nil) -> Self
@@ -323,7 +303,7 @@ public extension TensorView {
         // the subview offset is the view offset plus the offset of the position
         let viewStrides = strides ?? self.strides
         let viewOffset = offset + shape.linearIndex(of: lower)
-        let viewShape = Shape<Bounds>(bounds: bounds, strides: viewStrides)
+        let viewShape = Shape(bounds, strides: viewStrides)
         return Self(shape: viewShape, buffer: buffer,
                     offset: viewOffset, shared: shared)
     }
@@ -334,9 +314,9 @@ public extension TensorView {
     /// - Parameter with: and optional axes permutation order. If `nil` the
     /// last two dimensions are swapped.
     @inlinable
-    func transposed(with permutations: Bounds.Tuple? = nil) -> Self {
+    func transposed(with permutations: Bounds? = nil) -> Self {
         guard Self.rank > 1 else { return self }
-        let shape = self.shape.transposed(with: Bounds(permutations))
+        let shape = self.shape.transposed(with: permutations)
         return Self(shape: shape, buffer: buffer,
                     offset: offset, shared: shared)
     }
@@ -366,7 +346,7 @@ public extension TensorView where Element: Codable {
         let bounds = try container.decode(Bounds.self, forKey: .bounds)
         var dataContainer = try container.nestedUnkeyedContainer(forKey: .data)
 
-        self = Self.create(Shape<Bounds>(bounds: bounds), name)
+        self = Self.create(Shape(bounds: bounds), name)
 
         assert(self.count == dataContainer.count)
         var mutableElements = mutableBufferElements()
@@ -387,31 +367,28 @@ public extension TensorView where Element: Equatable {
         }
         return true
     }
-}
 
-public extension TensorView where Element: Equatable & AnyConvertable {
     /// compares the flat elements of self with a Swift collection of elements
     @inlinable
-    static func == <R>(lhs: Self, rhs: R) -> Bool
-        where R: Collection, R.Element: AnyConvertable
+    static func == <R>(lhs: Self, rhs: R) -> Bool where
+        Self.Element: BinaryFloatingPoint,
+        R: Collection, R.Element: BinaryInteger
     {
         for (lhsElement, rhsElement) in zip(lhs.bufferElements(), rhs) {
-            if lhsElement != Element(any: rhsElement) { return false }
+            if lhsElement != Element(rhsElement) { return false }
         }
         return true
     }
 
     /// compares the flat elements of self with a Swift collection of elements
     @inlinable
-    static func == <T>(lhs: Self, rhs: T) -> Bool where T: AnyConvertable
+    static func == <R>(lhs: Self, rhs: R) -> Bool where
+        Self.Element: BinaryInteger,
+        R: Collection, R.Element: BinaryInteger
     {
-        lhs.element == Element(any: rhs)
-    }
-
-    /// compares the flat elements of self with a Swift collection of elements
-    @inlinable
-    static func == <T>(lhs: T, rhs: Self) -> Bool where T: AnyConvertable
-    {
-        Element(any: lhs) == rhs.element
+        for (lhsElement, rhsElement) in zip(lhs.bufferElements(), rhs) {
+            if lhsElement != Element(rhsElement) { return false }
+        }
+        return true
     }
 }

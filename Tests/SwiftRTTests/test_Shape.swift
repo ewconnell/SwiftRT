@@ -30,7 +30,7 @@ class test_Shape: XCTestCase {
     // test_perfIndexShape1
     func test_perfIndexShape1() {
         #if !DEBUG
-        let shape = Shape1((1024 * 1024))
+        let shape = Shape(Bounds1(1024 * 1024))
         var count = 0
         self.measure {
             for _ in 0..<10 {
@@ -44,7 +44,7 @@ class test_Shape: XCTestCase {
 
     func test_perfIndexShape2() {
         #if !DEBUG
-        let shape = Shape2((1024, 1024))
+        let shape = Shape(Bounds2(1024, 1024))
         var count = 0
         self.measure {
             for _ in 0..<10 {
@@ -58,7 +58,7 @@ class test_Shape: XCTestCase {
 
     func test_perfIndexShape3() {
         #if !DEBUG
-        let shape = Shape3((64, 128, 128))
+        let shape = Shape(Bounds3(64, 128, 128))
         var count = 0
         self.measure {
             for _ in 0..<10 {
@@ -72,7 +72,7 @@ class test_Shape: XCTestCase {
     
     func test_perfIndexShape4() {
         #if !DEBUG
-        let shape = Shape4((2, 32, 128, 128))
+        let shape = Shape(Bounds4(2, 32, 128, 128))
         var count = 0
         self.measure {
             for _ in 0..<10 {
@@ -86,7 +86,7 @@ class test_Shape: XCTestCase {
     
     func test_perfIndexShape5() {
         #if !DEBUG
-        let shape = Shape5((2, 2, 16, 128, 128))
+        let shape = Shape(Bounds5(2, 2, 16, 128, 128))
         var count = 0
         self.measure {
             for _ in 0..<10 {
@@ -104,9 +104,9 @@ class test_Shape: XCTestCase {
     
     func test_perfSIMD2() {
         #if !DEBUG
-        let bounds = SIMD2(arrayLiteral: 2, 3)
-        let strides = SIMD2(arrayLiteral: 3, 1)
-        let pos = SIMD2(arrayLiteral: 1, 2)
+        let bounds = SIMD2(2, 3)
+        let strides = SIMD2(3, 1)
+        let pos = SIMD2(1, 2)
         var total = 0
         measure {
             for _ in 0..<simdPerfIterations {
@@ -122,9 +122,9 @@ class test_Shape: XCTestCase {
 
     func test_perfSIMD3() {
         #if !DEBUG
-        let bounds = SIMD3(arrayLiteral: 2, 3, 4)
-        let strides = SIMD3(arrayLiteral: 12, 3, 1)
-        let pos = SIMD3(arrayLiteral: 1, 2, 3)
+        let bounds = SIMD3(2, 3, 4)
+        let strides = SIMD3(12, 3, 1)
+        let pos = SIMD3(1, 2, 3)
         var total = 0
         measure {
             for _ in 0..<simdPerfIterations {
@@ -141,9 +141,9 @@ class test_Shape: XCTestCase {
     
     func test_perfSIMD4() {
         #if !DEBUG
-        let bounds = SIMD4(arrayLiteral: 1, 2, 3, 4)
-        let strides = SIMD4(arrayLiteral: 24, 12, 3, 1)
-        let pos = SIMD4(arrayLiteral: 0, 1, 2, 3)
+        let bounds = SIMD4(1, 2, 3, 4)
+        let strides = SIMD4(24, 12, 3, 1)
+        let pos = SIMD4(0, 1, 2, 3)
         var total = 0
         measure {
             for _ in 0..<simdPerfIterations {
@@ -160,9 +160,9 @@ class test_Shape: XCTestCase {
 
     func test_perfSIMD5() {
         #if !DEBUG
-        let bounds = SIMD5(arrayLiteral: 1, 2, 3, 4, 5)
-        let strides = SIMD5(arrayLiteral: 120, 60, 20, 5, 1)
-        let pos = SIMD5(arrayLiteral: 0, 1, 2, 3, 4)
+        let bounds = SIMD5(1, 2, 3, 4, 5)
+        let strides = SIMD5(120, 60, 20, 5, 1)
+        let pos = SIMD5(0, 1, 2, 3, 4)
         var total = 0
         measure {
             for _ in 0..<simdPerfIterations {
@@ -180,7 +180,7 @@ class test_Shape: XCTestCase {
     // test_SequentialViews
     func test_SequentialViews() {
         // vector views are always sequential
-        let v = Vector(with: 0..<6)
+        let v = Vector(0..<6)
         let subv = v[1...2]
         XCTAssert(subv.shape.isSequential)
         
@@ -199,25 +199,25 @@ class test_Shape: XCTestCase {
     // test_ShapeCollection
     func test_ShapeCollection() {
         // repeating
-        XCTAssert(Shape1((3), strides: (0)) == [0, 0, 0])
-        XCTAssert(Shape2((2, 3), strides: (0, 1)) == [0, 1, 2, 0, 1, 2])
-        XCTAssert(Shape2((2, 3), strides: (1, 0)) == [0, 0, 0, 1, 1, 1])
+        XCTAssert(Shape(Bounds1(3), strides: Bounds1(0)) == [0, 0, 0])
+        XCTAssert(Shape(Bounds2(2, 3), strides: Bounds2(0, 1)) == [0, 1, 2, 0, 1, 2])
+        XCTAssert(Shape(Bounds2(2, 3), strides: Bounds2(1, 0)) == [0, 0, 0, 1, 1, 1])
 
         // strided
-        XCTAssert(Shape1((5), strides: (3)) == [0, 3, 6, 9, 12])
-        XCTAssert(Shape1((5), strides: (3)) == [0, 3, 6, 9, 12])
-        XCTAssert(Shape2((2, 3), strides: (6, 2)) == [0, 2, 4, 6, 8, 10])
+        XCTAssert(Shape(Bounds1(5), strides: Bounds1(3)) == [0, 3, 6, 9, 12])
+        XCTAssert(Shape(Bounds1(5), strides: Bounds1(3)) == [0, 3, 6, 9, 12])
+        XCTAssert(Shape(Bounds2(2, 3), strides: Bounds2(6, 2)) == [0, 2, 4, 6, 8, 10])
 
         // dense
-        XCTAssert(Shape2((2, 3)) == [0, 1, 2, 3, 4, 5])
-        XCTAssert(Shape3((2, 3, 4)) == [Int](0..<24))
+        XCTAssert(Shape(Bounds2(2, 3)) == [0, 1, 2, 3, 4, 5])
+        XCTAssert(Shape(Bounds3(2, 3, 4)) == [Int](0..<24))
     }
 
     //--------------------------------------------------------------------------
     // test_transposed
     func test_transposed() {
         let volume = Volume(2,3,4).filledWithIndex()
-        let transVolume = volume.transposed(with: (2,1,0))
+        let transVolume = volume.transposed(with: Bounds3(2,1,0))
         XCTAssert(transVolume.array == [[[ 0.0, 12.0],
                                          [ 4.0, 16.0],
                                          [ 8.0, 20.0]],
@@ -239,24 +239,24 @@ class test_Shape: XCTestCase {
     // test_perfInitShape2
     func test_perfInitShape2() {
         #if !DEBUG
-        var shape = Shape2((1, 1))
-        let index = Shape2.Index(Bounds2.one, 5)
+        var shape = Shape(Bounds2(1, 1))
+        let index = Shape.Index(Bounds2.one, 5)
         var i = 0
         self.measure {
             for _ in 0..<1000000 {
-                let a = Shape2(bounds: Bounds2((3, 4)))
+                let a = Shape(bounds: Bounds2(3, 4))
                 let b = a.columnMajor
                 let ds = a == b ? b.dense : a.dense
-                let positive = Shape2.makePositive(bounds: Bounds2((1, -1)))
-                let c = Shape2(bounds: positive)
-                let r = Shape2(bounds: Bounds2.one).repeated(to: a.bounds)
+                let positive = Shape.makePositive(bounds: Bounds2(1, -1))
+                let c = Shape(bounds: positive)
+                let r = Shape(bounds: Bounds2.one).repeated(to: a.bounds)
                 let j = a.joined(with: [ds, c, r], alongAxis: 1)
                 let t = j.transposed()
                 shape = t
                 i = shape[index]
             }
         }
-        XCTAssert(shape.bounds == Bounds2((13, 3)) && i > 0)
+        XCTAssert(shape.bounds == Bounds2(13, 3) && i > 0)
         #endif
     }
 }

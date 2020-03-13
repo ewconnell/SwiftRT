@@ -23,14 +23,23 @@ public let _messageNewTensorsShouldBeDense = "new tensors should be dense"
 
 //==============================================================================
 // casting for convertable types
-public extension TensorView where Element: AnyConvertable {
+public extension TensorView {
     //--------------------------------------------------------------------------
     /// casting
     /// - Parameter other: a tensor of the same shape whose elements are
     /// to be cast
     @inlinable
     init<U>(_ other: U) where
-        U: TensorView, U.Element: AnyConvertable, U.Bounds == Self.Bounds
+        Self.Element: BinaryFloatingPoint,
+        U: TensorView, U.Element: BinaryInteger, U.Bounds == Bounds
+    {
+        self = Platform.service.cast(other)
+    }
+
+    @inlinable
+    init<U>(_ other: U) where
+        Self.Element: BinaryInteger,
+        U: TensorView, U.Element: BinaryFloatingPoint, U.Bounds == Bounds
     {
         self = Platform.service.cast(other)
     }
@@ -235,18 +244,9 @@ public extension TensorView {
     @differentiable(where Self: DifferentiableTensorView)
     init(repeating value: Element, to bounds: Bounds, name: String? = nil)
     {
-        let shape = Shape(bounds: bounds, strides: Bounds.zero)
+        let shape = Shape(bounds, strides: Bounds.zero)
         self = Self.create(for: value, shape, name)
     }
-
-    /*
-    @inlinable
-    @differentiable(where Self: DifferentiableTensorView)
-    init(repeating value: Element, to bounds: Bounds.Tuple, name: String? = nil)
-    {
-        self.init(repeating: value, to: Bounds(bounds), name: name)
-    }
-     */
     
     //--------------------------------------------------------------------------
     /// repeating element
@@ -294,7 +294,7 @@ public extension TensorView {
     /// helper to create a rank extended value
     @inlinable
     func createSingleElement(name: String? = nil) -> Self {
-        Self.create(Shape(bounds: Bounds.one, strides: Bounds.one), name)
+        Self.create(Shape(Bounds.one, strides: Bounds.one), name)
     }
     
     //==========================================================================
@@ -338,8 +338,8 @@ public extension TensorView {
 
     @inlinable
     static func create<C>(_ elements: C, _ shape: Shape<Bounds>,
-                          _ name: String?) -> Self where
-        C: Collection, C.Element == Element
+                          _ name: String?) -> Self
+        where C: Collection, C.Element == Element
     {
         // it can be less if the elements are being repeated
         assert(elements.count <= shape.count, _messageElementCountMismatch)

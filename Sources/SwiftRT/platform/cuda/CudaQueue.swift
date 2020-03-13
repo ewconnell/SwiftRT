@@ -13,30 +13,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+import Foundation
 
 //==============================================================================
-/// CpuService
-/// The collection of compute resources available to the application
-/// on the machine where the process is being run.
-public class CpuService: PlatformService {
-    // properties
-    public let devices: [CpuDevice]
-    public let logInfo: LogInfo
-    public let name: String
-    public var queueStack: [QueueId]
-
+/// CudaQueue
+public final class CudaQueue: DeviceQueue {
+    public let useGpu: Bool
+    
     //--------------------------------------------------------------------------
+    // initializers
     @inlinable
-    public init() {
-        name = "CpuService"
-        logInfo = LogInfo(logWriter: Platform.log, logLevel: .error,
-                          namePath: name, nestingLevel: 0)
-        devices = [
-            CpuDevice(parent: logInfo, memoryType: .unified, id: 0)
-        ]
-        
-        // select device 0 queue 0 by default
-        queueStack = []
-        queueStack = [ensureValidId(0, 0)]
+    public init(id: Int, parent logInfo: LogInfo,
+                deviceId: Int, deviceName: String, useGpu: Bool)
+    {
+        self.useGpu = useGpu
+        super.init(id: id, parent: logInfo, deviceId: deviceId,
+                   deviceName: deviceName)
     }
 }
+

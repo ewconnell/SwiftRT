@@ -18,6 +18,7 @@ import Foundation
 //==============================================================================
 /// ShapeProtocol
 public protocol ShapeProtocol: Codable, Equatable, Collection
+    where Element == Int
 {
     associatedtype Bounds: ShapeBounds
     
@@ -37,7 +38,7 @@ public protocol ShapeProtocol: Codable, Equatable, Collection
     /// - Parameter bounds: bounds of the shape in each dimension
     /// - Parameter strides: the distance to the next element in each dimension
     /// A value of `nil` implies row major sequential element strides
-    init(bounds: Bounds, strides: Bounds?)
+    init(_ bounds: Bounds, strides: Bounds?)
 }
 
 //==============================================================================
@@ -46,119 +47,8 @@ public protocol ShapeProtocol: Codable, Equatable, Collection
 let _messageInvalidBounds = "bounding dimensions must be greater than 0"
 
 //==============================================================================
-/// ShapeIndex
-public struct ShapeIndex<Bounds>: Comparable where Bounds: ShapeBounds {
-    /// the logical position along each axis
-    public var position: Bounds
-    /// linear sequence position
-    public var sequenceIndex: Int
-
-    //------------------------------------
-    // initializers
-    @inlinable
-    public init(_ position: Bounds, _ sequenceIndex: Int) {
-        self.position = position
-        self.sequenceIndex = sequenceIndex
-    }
-
-    //------------------------------------
-    // Equatable
-    @inlinable
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.sequenceIndex == rhs.sequenceIndex
-    }
-    
-    //------------------------------------
-    // Comparable
-    @inlinable
-    public static func < (lhs: Self, rhs: Self) -> Bool {
-        lhs.sequenceIndex < rhs.sequenceIndex
-    }
-}
-
-//==============================================================================
-// Shape
-public struct Shape<Bounds: ShapeBounds>: ShapeProtocol {
-    // properties
-    public let count: Int
-    public let bounds: Bounds
-    public let isSequential: Bool
-    public let spanCount: Int
-    public let strides: Bounds
-    
-    @inlinable
-    public init(bounds: Bounds, strides: Bounds? = nil)
-    {
-        assert(bounds.min() > 0, _messageInvalidBounds)
-        self.bounds = bounds
-        self.count = bounds.elementCount()
-        let sequentialStrides = bounds.sequentialStrides()
-        
-        if let callerStrides = strides {
-            self.strides = callerStrides
-            self.spanCount = ((bounds &- 1) &* callerStrides).wrappedSum() + 1
-            self.isSequential = callerStrides == sequentialStrides
-        } else {
-            self.strides = sequentialStrides
-            self.spanCount = self.count
-            self.isSequential = true
-        }
-    }
-}
-
-//==============================================================================
-// Collection
-extension Shape: Collection {
-    public typealias Element = Int
-    
-    @inlinable
-    public var startIndex: ShapeIndex<Bounds> {
-        ShapeIndex<Bounds>(Bounds.zero, 0)
-    }
-
-    @inlinable
-    public var endIndex: ShapeIndex<Bounds> {
-        ShapeIndex<Bounds>(Bounds.zero, count)
-    }
-    
-    // returns the strided linear index corresponding
-    // to the n-dimensional logical position
-    @inlinable
-    public subscript(index: ShapeIndex<Bounds>) -> Int {
-        if isSequential {
-            return index.sequenceIndex
-        } else {
-            return (index.position &* strides).wrappedSum()
-        }
-    }
-
-    @inlinable
-    public func index(after i: ShapeIndex<Bounds>) -> ShapeIndex<Bounds> {
-        var next = i
-        next.sequenceIndex += 1
-        if !isSequential {
-            next.position.increment(boundedBy: bounds)
-        }
-        return next
-    }
-}
-
-//==============================================================================
-// Equatable
-extension Shape: Equatable {
-    @inlinable
-    public static func == (_ lhs: Self, _ rhs: [Int]) -> Bool {
-        lhs.array == rhs
-    }
-}
-
-//==============================================================================
-// Codable
-extension Shape: Codable {}
-
-//==============================================================================
-// primary functions
-extension Shape {
+// ShapeProtocol extensions
+extension ShapeProtocol {
     /// array
     @inlinable
     public var array: [Int] { [Int](self) }
@@ -180,16 +70,37 @@ extension Shape {
     public static var rank: Int { Bounds.rank }
 
     //--------------------------------------------------------------------------
-    // computeSpanCount
+    // getSpanCount
     // A sub view may cover a wider range of parent element indexes
     // than the number of dense elements defined by the bounds of the view
     // due to striding.
     // The span of the bounds is the linear index of the last index + 1
     @inlinable
-    public static func computeSpanCount(_ bounds: Bounds, _ strides: Bounds) -> Int {
+    public static func spanCount(for bounds: Bounds, with strides: Bounds)-> Int
+    {
         ((bounds &- 1) &* strides).wrappedSum() + 1
     }
 
+    //--------------------------------------------------------------------------
+    /// `elementCount`
+    /// the count of logical elements described by bounds
+    @inlinable
+    public static func elementCount(of bounds: Bounds) -> Int {
+        bounds.indices.reduce(into: 1) { $0 &*= bounds[$1] }
+    }
+
+    //--------------------------------------------------------------------------
+    /// `sequentialStrides(bounds:`
+    /// - Returns: the row major sequential strides for the given bounds
+    @inlinable
+    public static func sequentialStrides(for bounds: Bounds) -> Bounds {
+        var strides = Bounds.one
+        for i in stride(from: Self.rank - 1, through: 1, by: -1) {
+            strides[i - 1] = bounds[i] * strides[i]
+        }
+        return strides
+    }
+    
     //--------------------------------------------------------------------------
     // linearIndex
     @inlinable
@@ -201,39 +112,26 @@ extension Shape {
     // init(bounds:
     @inlinable
     public init(bounds: Bounds) {
-        self.init(bounds: bounds, strides: nil)
+        self.init(bounds, strides: nil)
     }
     
     //--------------------------------------------------------------------------
-    // init with tuples
-    @inlinable
-    public init(_ bounds: Bounds.Tuple, strides: Bounds.Tuple? = nil) {
-        self.init(bounds: Bounds(bounds), strides: Bounds(strides))
-    }
-
-    @inlinable
-    public init?(_ bounds: Bounds.Tuple?, strides: Bounds.Tuple? = nil) {
-        guard let bounds = bounds else { return nil }
-        self.init(bounds: Bounds(bounds), strides: Bounds(strides))
-    }
-
-    //--------------------------------------------------------------------------
     // init(expanding:
     @inlinable
-    public init<B>(expanding other: Shape<B>, alongAxes axes: Set<Int>? = nil)
-        where B: ShapeBounds
+    public init<S>(expanding other: S, alongAxes axes: Set<Int>? = nil)
+        where S: ShapeProtocol
     {
-        assert(B.rank < Self.rank, "can only expand lower ranked shapes")
+        assert(S.rank < Self.rank, "can only expand lower ranked shapes")
         var newBounds = Bounds.zero
         var newStrides = Bounds.zero
         let axesSet = axes == nil ?
-            Set(0..<Self.rank - B.rank) :
+            Set(0..<Self.rank - S.rank) :
             Set(axes!.map { $0 < 0 ? $0 + Self.rank : $0 })
-        assert(B.rank + axesSet.count == Self.rank,
+        assert(S.rank + axesSet.count == Self.rank,
                "`other.rank` plus number of specified axes " +
             "must equal the `rank` of this shape")
 
-        var j = B.rank - 1
+        var j = S.rank - 1
         for i in (0..<Self.rank).reversed() {
             if axesSet.contains(i) {
                 // expanded axes are set to 1
@@ -250,21 +148,20 @@ extension Shape {
                 j -= 1
             }
         }
-        self.init(bounds: newBounds, strides: newStrides)
+        self.init(newBounds, strides: newStrides)
     }
     
     //--------------------------------------------------------------------------
     // init(indenting:
     @inlinable
-    public init<B>(indenting other: Shape<B>) where B: ShapeBounds
-    {
-        assert(B.rank < Self.rank, "can only indent lower ranked shapes")
+    public init<S>(indenting other: S) where S: ShapeProtocol {
+        assert(S.rank < Self.rank, "can only indent lower ranked shapes")
 
         // Self and other are different ranks so we append other's elements
-        let start = Self.rank - B.rank
+        let start = Self.rank - S.rank
         var newBounds = Bounds.one
         var newStrides = Bounds.one
-        for (i, j) in zip(start..<Self.rank, 0..<B.rank) {
+        for (i, j) in zip(start..<Self.rank, 0..<S.rank) {
             newBounds[i] = other.bounds[j]
             newStrides[i] = other.strides[j]
         }
@@ -272,40 +169,40 @@ extension Shape {
             newStrides[i] = other.strides[0]
         }
         
-        self.init(bounds: newBounds, strides: newStrides)
+        self.init(newBounds, strides: newStrides)
     }
     
     //--------------------------------------------------------------------------
     // init(padding:
     @inlinable
-    public init<B>(padding other: Shape<B>) where B: ShapeBounds {
-        assert(B.rank < Self.rank, "can only pad lower ranked shapes")
+    public init<S>(padding other: S) where S: ShapeProtocol {
+        assert(S.rank < Self.rank, "can only pad lower ranked shapes")
         
         // Self and other are different ranks so we copy the leading elements
         var newBounds = Bounds.one
         var newStrides = Bounds.one
-        for i in 0..<B.rank {
+        for i in 0..<S.rank {
             newBounds[i] = other.bounds[i]
             newStrides[i] = other.strides[i]
         }
-        self.init(bounds: newBounds, strides: newStrides)
+        self.init(newBounds, strides: newStrides)
     }
     
     //--------------------------------------------------------------------------
     // init(squeezing:
     @inlinable
-    public init<B>(squeezing other: Shape<B>, alongAxes axes: Set<Int>? = nil)
-        where B: ShapeBounds
+    public init<S>(squeezing other: S, alongAxes axes: Set<Int>? = nil)
+        where S: ShapeProtocol
     {
         // make sure we have a positive set of axes to squeeze along
         var newBounds = Bounds.zero
         var newStrides = Bounds.zero
         let axesSet = axes == nil ?
-            Set(0..<B.rank) :
-            Set(axes!.map { $0 < 0 ? B.rank + $0 : $0 })
+            Set(0..<S.rank) :
+            Set(axes!.map { $0 < 0 ? S.rank + $0 : $0 })
 
         var axis = 0
-        for otherAxis in 0..<B.rank where
+        for otherAxis in 0..<S.rank where
             !(other.bounds[otherAxis] == 1 && axesSet.contains(otherAxis))
         {
             assert(axis < Self.rank,
@@ -314,15 +211,15 @@ extension Shape {
             newStrides[axis] = other.strides[otherAxis]
             axis += 1
         }
-        self.init(bounds: newBounds, strides: newStrides)
+        self.init(newBounds, strides: newStrides)
     }
     
     //--------------------------------------------------------------------------
     // init(flattening:
     @inlinable
-    public init<B>(flattening other: Shape<B>) where B: ShapeBounds {
+    public init<S>(flattening other: S) where S: ShapeProtocol {
         assert(other.isSequential, "cannot flatten non sequential data")
-        assert(B.rank >= Self.rank, "cannot flatten bounds of lower rank")
+        assert(S.rank >= Self.rank, "cannot flatten bounds of lower rank")
 
         // copy the leading dimensions
         var bounds = Bounds.zero
@@ -331,7 +228,7 @@ extension Shape {
         }
 
         // get product of the remaining dimensions
-        for j in Self.rank..<B.rank {
+        for j in Self.rank..<S.rank {
             bounds[Self.rank-1] *= other.bounds[j]
         }
         self = Self(bounds: bounds)
@@ -386,7 +283,7 @@ extension Shape {
         cmBounds.swapAt(Self.rank-1, Self.rank-2)
         var cmStrides = cmBounds.sequentialStrides()
         cmStrides.swapAt(Self.rank-1, Self.rank-2)
-        return Self(bounds: bounds, strides: cmStrides)
+        return Self(bounds, strides: cmStrides)
     }
     
     //--------------------------------------------------------------------------
@@ -416,7 +313,7 @@ extension Shape {
         }
         
         // it is sequential only for vectors
-        return Self(bounds: repeatedBounds, strides: repeatedStrides)
+        return Self(repeatedBounds, strides: repeatedStrides)
     }
 
     //--------------------------------------------------------------------------
@@ -446,7 +343,114 @@ extension Shape {
             newStrides.swapAt(Self.rank-1, Self.rank-2)
         }
         
-        return Self(bounds: newBounds, strides: newStrides)
+        return Self(newBounds, strides: newStrides)
     }
 }
 
+//==============================================================================
+// Collection
+extension ShapeProtocol
+{
+    @inlinable
+    public var startIndex: ShapeIndex<Bounds> {
+        ShapeIndex<Bounds>(Bounds.zero, 0)
+    }
+
+    @inlinable
+    public var endIndex: ShapeIndex<Bounds> {
+        ShapeIndex<Bounds>(Bounds.zero, count)
+    }
+    
+    // returns the strided linear index corresponding
+    // to the n-dimensional logical position
+    @inlinable
+    public subscript(index: ShapeIndex<Bounds>) -> Int {
+        if isSequential {
+            return index.sequenceIndex
+        } else {
+            return (index.position &* strides).wrappedSum()
+        }
+    }
+
+    @inlinable
+    public func index(after i: ShapeIndex<Bounds>) -> ShapeIndex<Bounds> {
+        var next = i
+        next.sequenceIndex += 1
+        if !isSequential {
+            next.position.increment(boundedBy: bounds)
+        }
+        return next
+    }
+}
+
+//==============================================================================
+// Equatable
+extension ShapeProtocol {
+    @inlinable
+    public static func == (_ lhs: Self, _ rhs: [Int]) -> Bool {
+        lhs.array == rhs
+    }
+}
+
+//==============================================================================
+/// ShapeIndex
+public struct ShapeIndex<Bounds>: Comparable where Bounds: ShapeBounds {
+    /// the logical position along each axis
+    public var position: Bounds
+    /// linear sequence position
+    public var sequenceIndex: Int
+
+    //------------------------------------
+    // initializers
+    @inlinable
+    public init(_ position: Bounds, _ sequenceIndex: Int) {
+        self.position = position
+        self.sequenceIndex = sequenceIndex
+    }
+
+    //------------------------------------
+    // Equatable
+    @inlinable
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.sequenceIndex == rhs.sequenceIndex
+    }
+    
+    //------------------------------------
+    // Comparable
+    @inlinable
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+        lhs.sequenceIndex < rhs.sequenceIndex
+    }
+}
+
+//==============================================================================
+// Shape
+public struct Shape<Bounds: ShapeBounds>: ShapeProtocol
+{
+    public typealias Index = ShapeIndex<Bounds>
+    
+    // properties
+    public let count: Int
+    public let bounds: Bounds
+    public let isSequential: Bool
+    public let spanCount: Int
+    public let strides: Bounds
+    
+    @inlinable
+    public init(_ bounds: Bounds, strides: Bounds? = nil) {
+        assert(bounds.min() > 0, _messageInvalidBounds)
+        self.bounds = bounds
+        self.count = bounds.elementCount()
+        let sequentialStrides = bounds.sequentialStrides()
+
+        if let callerStrides = strides {
+            self.strides = callerStrides
+            self.spanCount =  ((bounds &- 1) &* callerStrides).wrappedSum() + 1
+            self.isSequential = callerStrides == sequentialStrides
+        } else {
+            self.strides = sequentialStrides
+            self.spanCount = self.count
+            self.isSequential = true
+        }
+    }
+}
