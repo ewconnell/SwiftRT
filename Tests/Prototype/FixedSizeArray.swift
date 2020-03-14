@@ -29,7 +29,7 @@
 ///
 /// This protocol should be thought of as an implementation detail of `ArrayN`;
 /// it is not generally useful.
-protocol ArrayNProtocol : MutableCollection, RandomAccessCollection,
+protocol FixedSizeArray : MutableCollection, RandomAccessCollection,
     CustomStringConvertible where Index == Int
 {
     /// Creates an instance containing exactly the elements of `source`.
@@ -52,12 +52,12 @@ protocol ArrayNProtocol : MutableCollection, RandomAccessCollection,
 }
 
 /// Default implementation of `CustomStringConvertible` conformance.
-extension ArrayNProtocol {
+extension FixedSizeArray {
     var description: String { "\(Array(self))"}
 }
 
 /// A fixed sized collection of 1 element.
-struct Array1<T> : ArrayNProtocol {
+struct Array1<T> : FixedSizeArray {
     /// The value contained in the collection
     private var head: T
 
@@ -122,7 +122,7 @@ extension Array1 : Comparable where Element : Comparable {
 }
 
 /// A fixed sized collection that stores one more element than `Tail` does.
-struct ArrayN<Tail: ArrayNProtocol> : ArrayNProtocol {
+struct ArrayN<Tail: FixedSizeArray> : FixedSizeArray {
     private var head: Element
     private var tail: Tail
     

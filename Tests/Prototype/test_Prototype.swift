@@ -16,7 +16,7 @@
 import XCTest
 import Foundation
 
-class test_StaticArray: XCTestCase {
+class test_FixedSizeArray: XCTestCase {
     func test_all() {
         let x = Array6(0..<6)
         XCTAssert(x.elementsEqual(0..<6))
