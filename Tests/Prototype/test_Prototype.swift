@@ -43,6 +43,21 @@ class test_FixedSizeArray: XCTestCase {
     }
 }
 
+class test_DenseTensor: XCTestCase {
+    func test_rowMajor() {
+        let a = DenseTensor(0..<(3*4*5), shape: Rank3(3, 4, 5))
+        var expectNext = 0
+        for i in 0..<3 {
+            for j in 0..<4 {
+                for k in 0..<5 {
+                    XCTAssertEqual(a[.init(i, j, k)], expectNext)
+                    expectNext += 1
+                }
+            }
+        }
+    }
+}
+
 // ======== Some functions whose disassembly to inspect ===========
 func testMe2(_ a: Array2<Int>) -> Array1<Int> {
     return a.removing(at: 1)
