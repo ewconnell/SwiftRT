@@ -60,6 +60,9 @@ targets.append(
 targets.append(
     .testTarget(name: "SwiftRTTests", dependencies: ["SwiftRT"]))
 
+targets.append(
+    .testTarget(name: "Prototype"))
+
 let package = Package(
     name: "SwiftRT",
     products: products,
