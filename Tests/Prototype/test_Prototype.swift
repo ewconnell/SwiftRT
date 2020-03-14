@@ -43,6 +43,47 @@ class test_FixedSizeArray: XCTestCase {
     }
 }
 
+/// A vector of vectors of... some scalar TensorElement
+struct EagerVector<T: TensorElement> : TensorElement {
+    let storage: [T]
+    init(_ storage: [T]) { self.storage = storage }
+    
+    typealias _Element = T
+    typealias Scalar = _Element.Scalar
+    static func _subscript(_ instance: Self, at i:Int) -> T {
+        return instance.storage[i]
+    }
+    
+    static func _count(_ instance: Self) -> Int {
+        return instance.storage.count
+    }
+}
+
+class test_TensorElement: XCTestCase {
+    func checkConformance<T: TensorElement>(_: T) {}
+    
+    func checkConformance<T: TensorElement>(x: T)
+        where T._Element : TensorElement
+    {
+        for i in 0..<x.count {
+            let _: T.Element = x[i]
+        }
+    }
+    
+    func test_scalars() {
+        checkConformance(0 as Int)
+        checkConformance(0 as UInt)
+        checkConformance(0 as Float)
+        checkConformance(0 as Double)
+    }
+
+    func test_EagerVector() {
+        checkConformance(EagerVector([0]))
+        checkConformance(EagerVector([0.0]))
+        checkConformance(EagerVector([EagerVector([0.0])]))
+    }
+}
+
 class test_DenseTensor: XCTestCase {
     func test_rowMajor() {
         let a = DenseTensor(0..<(3*4*5), shape: Rank3(3, 4, 5))
