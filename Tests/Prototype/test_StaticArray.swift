@@ -16,6 +16,33 @@
 import XCTest
 import Foundation
 
+class test_StaticArray: XCTestCase {
+    func test_all() {
+        let x = Array6(0..<6)
+        XCTAssert(x.elementsEqual(0..<6))
+        XCTAssertEqual(x, .init(0..<6))
+        XCTAssertLessThan(x, .init(1..<7))
+
+        for i in x.indices {
+            // Test removing at each position
+            let d = x.removing(at: i)
+            XCTAssert(d.elementsEqual([x[..<i], x[(i+1)...]].joined()))
+
+            // Test insertion at each position
+            
+            // A 1-element slice of d, but with x[i] as its only element.  
+            let xi = ArrayN(head: x[i], tail: d.removing(at: 0))[0...0]
+
+            // Try reinserting the element 1 place further along (wrapping to count).
+            let j = (i + 1) % d.count
+            let e = d.inserting(x[i], at: j)
+            XCTAssert(e.elementsEqual([d[..<j], xi, d[j...]].joined()))
+
+            XCTAssert(type(of: x) == type(of: e))
+        }
+    }
+}
+
 // ======== Some functions whose disassembly to inspect ===========
 func testMe2(_ a: Array2<Int>) -> Array1<Int> {
     return a.removing(at: 1)
@@ -56,35 +83,4 @@ func testMe7d(_ a: Array<Int>) -> Array7<Int> {
 
 func testMe2b(_ a: Array2<Int>) -> Array3<Int> {
     return a.inserting(9, at: 2)
-}
-
-// ======== Runtime tests ==============
-class test_StaticArray: XCTestCase {
-    func test_all() {
-        let x = Array6(0..<6)
-        assert(x.elementsEqual(0..<6))
-        assert(x == .init(0..<6))
-        assert(x < .init(1..<7))
-
-        for i in x.indices {
-            // Test removing at each position
-            let d = x.removing(at: i)
-            assert(d.elementsEqual([x[..<i], x[(i+1)...]].joined()))
-
-            // Test insertion at each position
-            
-            // A 1-element slice of d, but with x[i] as its only element.  
-            let xi0 = ArrayN(head: x[i], tail: d.removing(at: 0))
-            let xi = xi0[0...0]
-
-            // Try reinserting the element 1 place further along (wrapping to count).
-            let j = (i + 1) % d.count
-            let e = d.inserting(x[i], at: j)
-            assert(e.elementsEqual([d[..<j], xi, d[j...]].joined()))
-
-            assert(type(of: x) == type(of: e))
-        }
-
-        print(testMe6a(.init(1, 2, 3, 4, 5, 6)))
-    }
 }
