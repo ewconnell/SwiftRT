@@ -1,46 +1,10 @@
-/// Types that can represent the shape, dimensions, or index of a tensor.
+/// Types whose instances can represent the shape of, or an index of, a tensor.
 ///
 // If Swift supported constrained typealiases, this would be one, and… 
 protocol TensorShape: FixedSizeArray where Element == Int, Self: Equatable {}
 // …these conformances wouldn't need to be declared.
 extension Array1 : TensorShape where Element == Int {}
 extension ArrayN : TensorShape where Tail : TensorShape {}
-
-/// Types that determine compatibility of tensors for use in binary operations.
-///
-/// Every type conforming to `TensorProtocol` has an associated
-/// `CompatibilityClass` that can be used to restrict the tensors it interacts
-/// with to have matching rank and possibly other properties, such as device
-/// class.
-///
-/// Compatibility classes can be compared at runtime with `==` to dynamically
-/// check that the details of their shapes match.
-protocol TensorCompatibility : Equatable {
-    /// A type whose values can hold the shape of the tensor.
-    ///
-    /// Binary operations that require their operands have matching rank can
-    /// statically require that they have the same `Rank` type.
-    associatedtype Dimensions: TensorShape
-    
-    /// The shape of the tens,or.
-    var dimensions: Dimensions { get }
-}
-
-/// Types whose values represent mathematical tensor objects
-protocol Tensor {
-    associatedtype CompatibilityClass: TensorCompatibility
-    var compatibilityClass: CompatibilityClass { get }
-
-    associatedtype Scalar
-    
-    subscript(i: Index) -> Scalar { get }
-}
-
-extension Tensor {
-    typealias Index = CompatibilityClass.Dimensions
-    typealias Shape = Index
-    var rank: Int { compatibilityClass.dimensions.count }
-}
 
 typealias Rank1 = Array1<Int>
 typealias Rank2 = Array2<Int>
@@ -50,9 +14,95 @@ typealias Rank5 = Array5<Int>
 typealias Rank6 = Array6<Int>
 typealias Rank7 = Array7<Int>
 
-struct RankCompatibility<D: TensorShape> : TensorCompatibility
-{
-    var dimensions: D
+/// Types that can be used to index tensors of a given shape.
+typealias TensorIndex<Shape: TensorShape> = Shape
+
+/// Types that implement core tensor operations.
+///
+/// Only tensors having the same tensor class can interoperate in operations
+/// like `+` or `matmul`.
+protocol DynamicTensorClass {
+    associatedtype Scalar
+
+    /// Traps with an appropriate message iff `self` cannot be combined with
+    /// `other` in computations for a reasons *other than* a shape mismatch.
+    ///
+    /// May be used to dynamically check that two tensors are on the same
+    /// device.
+    func checkOperationalCompatibility(with other: Self)
+    
+    /// Returns `l` + `r`.
+    static func plus<Shape: TensorShape>(
+        _ l: Self, _ r: Self, shape: Shape
+    ) -> Self
+
+    /// Returns `l`×`r``.
+    ///
+    /// - Requires: `lshape[1] == rshape[0]`
+    static func matmul(
+        _ l: Self, shape lshape: Rank2, _ r: Self, shape rshape: Rank2
+    ) -> Self
+
+    /// Returns true iff `l` = `r`.
+    static func equals<Shape: TensorShape>(
+        _ l: Self, _ r: Self, shape: Shape
+    ) -> Self
+}
+
+struct DynamicTensor<Class: DynamicTensorClass, Shape: TensorShape> {
+    var implementation: Class
+    var shape: Shape
+    
+    typealias Scalar = Class.Scalar
+    
+    init(_ implementation: Class, shape: Shape) {
+        self.implementation = implementation
+        self.shape = shape
+    }
+
+    func checkPointwiseCompatibility(with other: Self) {
+        implementation.checkOperationalCompatibility(with: other.implementation)
+        precondition(shape == other.shape, "shape \(shape) != \(other.shape)")
+    }
+    
+    static func + (l: Self, r: Self) -> Self {
+        l.checkPointwiseCompatibility(with: r)
+        return DynamicTensor(
+            Class.plus(l.implementation, r.implementation, shape: l.shape),
+            shape: l.shape)
+    }
+}
+
+/// Returns `l`×`r``.
+///
+/// - Requires: `l.shape[1] == r.shape[0]`
+func matmul<Class: DynamicTensorClass>(
+    _ l: DynamicTensor<Class, Rank2>, _ r: DynamicTensor<Class, Rank2>
+) -> DynamicTensor<Class, Rank2> {
+    l.implementation.checkOperationalCompatibility(with: r.implementation)
+    precondition(
+        l.shape[1] == r.shape[0],
+        "inner dimensions \(l.shape[1]) != \(r.shape[0])")
+    return DynamicTensor(
+        Class.matmul(
+            l.implementation, shape: l.shape,
+            r.implementation, shape: r.shape),
+        shape: Rank2(l.shape[0], r.shape[1]))
+}
+
+/// Types whose values represent mathematical tensor objects
+protocol TensorValue {
+    associatedtype Scalar
+    associatedtype Shape: TensorShape
+
+    var shape: Shape { get }
+    typealias Index = Shape
+    subscript(i: Index) -> Scalar { get }
+}
+
+extension TensorValue {
+    var rank: Int { shape.count }
+    var count: Int { shape.reduce(1, &*) }
 }
 
 /// A dense tensor view of some underlying `Base` collection.
@@ -61,14 +111,11 @@ struct RankCompatibility<D: TensorShape> : TensorCompatibility
 /// the base collection, the tensor element at (i₀, i₁, ...i₅+1) immediately
 /// follows the one at (i₀, i₁, ...i₅).
 struct DenseTensor<Base: RandomAccessCollection, Shape: TensorShape>
-    : Tensor
+    : TensorValue
 {
     var base: Base
     let shape: Shape
 
-    var compatibilityClass: RankCompatibility<Shape> {
-        .init(dimensions: shape)
-    }
     
     init(_ base: Base, shape: Shape) {
         self.base = base
