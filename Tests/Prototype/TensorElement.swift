@@ -6,7 +6,7 @@ protocol _AnyTensorElement {
     /// otherwise.
     func _anySubscript(_ i: Int) -> _AnyTensorElement
     
-    /// Returns the number of subscriptable elements in `self` .
+    /// The number of subscriptable elements in `self` .
     var _count: Int { get }
 }
 
@@ -30,14 +30,17 @@ protocol TensorElement : _AnyTensorElement {
 
 /// Default implementations for scalars.
 extension TensorElement where _Element == Never {
+    /// Traps, because `Self` is not a vector of elements.
     func _anySubscript(_ i: Int) -> _AnyTensorElement {
-        fatalError()
+        fatalError("Unreachable through observable APIs.")
     }
     
+    /// Traps, because `Self` is not a vector of elements.
     func _subscript(_ i: Int) -> Never {
-        fatalError()
+        fatalError("Unreachable through observable APIs.")
     }
     
+    /// The number of subscriptable elements in `self` (0).
     var _count: Int { 0 }
 }
 
@@ -45,20 +48,29 @@ extension TensorElement where _Element == Never {
 extension TensorElement where _Element: TensorElement {
     typealias Element = _Element
     
+    /// Returns the element at index `i`.
     subscript(i: Int) -> Element { _subscript(i) }
-    var count: Int { _count }
+
+    /// The number of subscriptable elements in `self` (always at least 1).
+    var count: Int {
+        assert(_count > 0)
+        return _count
+    }
     
+    /// Returns the element at index `i`.
     func _anySubscript(_ i: Int) -> _AnyTensorElement {
         return self[i]
     }    
 }
 
+// == Scalar Conformances ==
 extension Int : TensorElement {}
 extension UInt : TensorElement {}
 extension Float : TensorElement {}
 extension Double : TensorElement {}
 
-/// A wrapper for any `TensorElement` having the given `Scalar` type.
+/// A type-erasing wrapper for any `TensorElement` having the given `Scalar`
+/// type.
 struct AnyTensorElement<Scalar: TensorElement> : TensorElement
     where Scalar._Element == Never
 {
@@ -91,6 +103,6 @@ struct AnyTensorElement<Scalar: TensorElement> : TensorElement
     /// Returns the scalar value of `self`, or `nil` if `self` is a vector.
     subscript() -> Scalar? { value as? Scalar }
     
+    /// The number of subscriptable elements in `self` .
     var _count: Int { value._count }
 }
-
