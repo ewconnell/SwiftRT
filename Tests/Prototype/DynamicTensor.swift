@@ -30,6 +30,10 @@ protocol DynamicTensorClass {
     ) -> Self
 }
 
+struct DynamicVector<Class: DynamicTensorClass, Nesting: TensorShape> {
+
+}
+
 /// A tensor whose type depends only on its rank and Scalar type.
 struct DynamicTensor<Class: DynamicTensorClass, Shape: TensorShape> {
     var implementation: Class

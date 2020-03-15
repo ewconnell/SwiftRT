@@ -1,5 +1,11 @@
+// Existential type for quick-n-dirty type erasure.
+protocol _AnyTensorElement {
+    func _anySubscript(at i: Int) -> _AnyTensorElement
+    var _count: Int { get }
+}
+
 /// Types that can be elements of tensors.
-protocol TensorElement {
+protocol TensorElement : _AnyTensorElement {
     /// Every `TensorElement` is a balanced tree of zero or more
     /// `TensorElement`s, with `Scalar` instances at the leaves.
     ///
@@ -14,6 +20,11 @@ protocol TensorElement {
 }
 
 extension TensorElement where _Element == Never {
+    func _anySubscript(at i: Int) -> _AnyTensorElement {
+        fatalError()
+    }
+    var _count: Int { 0 }
+    
     static func _subscript(_ instance: Self, at i: Int) -> Never {
         fatalError()
     }
@@ -21,6 +32,12 @@ extension TensorElement where _Element == Never {
 }
 
 extension TensorElement where _Element: TensorElement {
+    func _anySubscript(at i: Int) -> _AnyTensorElement
+    {
+        return self[i]
+    }
+    var _count: Int { count }
+    
     typealias Element = _Element
     
     subscript(i: Int) -> Element {
@@ -34,69 +51,31 @@ extension UInt : TensorElement {}
 extension Float : TensorElement {}
 extension Double : TensorElement {}
 
-/*
-struct AnyTensorElement<Scalar: TensorElement>
+struct AnyTensorElement<Scalar: TensorElement> : TensorElement
     where Scalar._Element == Never
 {
-    private enum Storage {
-        case scalar(Scalar)
-        case vector(AnyTensorElementVector_<Scalar>)
-    }
-    private let storage: Storage
+    typealias Scalar = Scalar
+    typealias _Element = AnyTensorElement
+
+    private let value: _AnyTensorElement
     
-    init(scalar base: Scalar) {
-        storage = .scalar(base)
+    init<Base: TensorElement>(_ value: Base)
+    where Base.Scalar == Scalar {
+        self.value = value
     }
 
-    init<Base: TensorElement>(vector base: Base)
-        where Base._Element : TensorElement,
-              Base.Scalar == Scalar,
-              Base._Element == Scalar
-    {
-        storage = .vector(AnyTensorElementVector(base))
+    private init(value: _AnyTensorElement) {
+        self.value = value
     }
     
-    init<Base: TensorElement>(vector base: Base)
-        where Base._Element : TensorElement, Base.Scalar == Scalar
+    static func _subscript(_ self_: Self, at i: Int)
+        -> AnyTensorElement<Scalar>
     {
-        storage = .vector(AnyTensorElementVector(base))
+        .init(value: self_.value._anySubscript(at: i))
     }
-    
-    subscript(i: Int) -> AnyTensorElement<Scalar> {
-        guard case .vector(let impl) = storage else {
-            fatalError("Can't subscript a scalar.")
-        }
-        return impl[i]
+
+    static func _count(_ self_: Self) -> Int {
+        return self_.value._count
     }
 }
 
-fileprivate class AnyTensorElementVector_<Scalar: TensorElement>
-    where Scalar._Element == Never
-{
-    subscript(i: Int) -> AnyTensorElement<Scalar> {
-        fatalError("should be unreachable.")
-    }
-}
-
-fileprivate class AnyTensorElementVector<Base: TensorElement>
-    : AnyTensorElementVector_<Base.Scalar>
-    where Base._Element: TensorElement
-{
-    let base: Base
-    
-    init(_ base: Base) { self.base = base }
-
-    override subscript(i: Int) -> AnyTensorElement<Base.Scalar> {
-       return Base._Element == Base.Scalar
-           ? .init(scalar: base[i] as! Base.Scalar)
-           : .init(vector: base[i])
-    }
-
-    override subscript(i: Int) -> AnyTensorElement<Base.Scalar>
-        where Base.Scalar == Base._Element.Scalar
-    {
-        .init(vector: base[i])
-    }
-}
-
-*/
