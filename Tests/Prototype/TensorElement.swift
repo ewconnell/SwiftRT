@@ -106,3 +106,7 @@ struct AnyTensorElement<Scalar: TensorElement> : TensorElement
     /// The number of subscriptable elements in `self` .
     var _count: Int { value._count }
 }
+
+extension AnyTensorElement : CustomStringConvertible {
+    var description: String { String(describing: value) }
+}

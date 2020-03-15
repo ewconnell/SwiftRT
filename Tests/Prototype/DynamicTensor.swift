@@ -3,7 +3,8 @@
 /// Only tensors having the same tensor class can interoperate in operations
 /// like `+` or `matmul`.
 protocol DynamicTensorClass {
-    associatedtype Scalar
+    associatedtype Scalar: TensorElement
+        where Scalar._Element == Never
 
     /// Traps with an appropriate message iff `self` cannot be combined with
     /// `other` in computations for a reasons *other than* a shape mismatch.
@@ -19,7 +20,7 @@ protocol DynamicTensorClass {
 
     /// Returns `l`×`r``.
     ///
-    /// - Requires: `lshape[1] == rshape[0]`
+    /// - Requires: `lshape[1] == rshape[0]`.
     static func matmul(
         _ l: Self, shape lshape: Rank2, _ r: Self, shape rshape: Rank2
     ) -> Self
@@ -28,10 +29,10 @@ protocol DynamicTensorClass {
     static func equals<Shape: TensorShape>(
         _ l: Self, _ r: Self, shape: Shape
     ) -> Self
-}
 
-struct DynamicVector<Class: DynamicTensorClass, Nesting: TensorShape> {
-
+    /// Returns the element at `index`.
+    func subscript_<Shape: TensorShape>(
+        shape: Shape, at index: Shape) -> AnyTensorElement<Scalar>
 }
 
 /// A tensor whose type depends only on its rank and Scalar type.
@@ -40,6 +41,7 @@ struct DynamicTensor<Class: DynamicTensorClass, Shape: TensorShape> {
     var shape: Shape
     
     typealias Scalar = Class.Scalar
+    typealias Index = Shape
     
     init(_ implementation: Class, shape: Shape) {
         self.implementation = implementation
@@ -58,6 +60,11 @@ struct DynamicTensor<Class: DynamicTensorClass, Shape: TensorShape> {
         return DynamicTensor(
             Class.plus(l.implementation, r.implementation, shape: l.shape),
             shape: l.shape)
+    }
+
+    /// Returns the element at `i`.
+    subscript(i: Index) -> AnyTensorElement<Scalar> {
+        return implementation.subscript_(shape: shape, at: i)
     }
 }
 
