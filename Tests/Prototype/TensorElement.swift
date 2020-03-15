@@ -1,6 +1,6 @@
 // Existential type for quick-n-dirty type erasure.
 protocol _AnyTensorElement {
-    func _anySubscript(at i: Int) -> _AnyTensorElement
+    func _anySubscript(_ i: Int) -> _AnyTensorElement
     var _count: Int { get }
 }
 
@@ -10,40 +10,34 @@ protocol TensorElement : _AnyTensorElement {
     /// `TensorElement`s, with `Scalar` instances at the leaves.
     ///
     /// The default Scalar type is `Self`.
-    associatedtype Scalar: TensorElement  = Self
+    associatedtype Scalar: TensorElement = Self
         where Scalar._Element == Never
 
     associatedtype _Element = Never
-
-    static func _subscript(_ instance: Self, at i: Int) -> _Element
-    static func _count(_ instance: Self) -> Int
+    func _subscript(_ i: Int) -> _Element
 }
 
 extension TensorElement where _Element == Never {
-    func _anySubscript(at i: Int) -> _AnyTensorElement {
+    func _anySubscript(_ i: Int) -> _AnyTensorElement {
         fatalError()
     }
-    var _count: Int { 0 }
     
-    static func _subscript(_ instance: Self, at i: Int) -> Never {
+    func _subscript(_ i: Int) -> Never {
         fatalError()
     }
-    static func _count(_:Self) -> Int { 0 }
+    
+    var _count: Int { 0 }
 }
 
 extension TensorElement where _Element: TensorElement {
-    func _anySubscript(at i: Int) -> _AnyTensorElement
-    {
-        return self[i]
-    }
-    var _count: Int { count }
-    
     typealias Element = _Element
     
-    subscript(i: Int) -> Element {
-        Self._subscript(self, at: i)
-    }
-    var count: Int { Self._count(self) }
+    subscript(i: Int) -> Element { _subscript(i) }
+    var count: Int { _count }
+    
+    func _anySubscript(_ i: Int) -> _AnyTensorElement {
+        return self[i]
+    }    
 }
 
 extension Int : TensorElement {}
@@ -55,7 +49,7 @@ struct AnyTensorElement<Scalar: TensorElement> : TensorElement
     where Scalar._Element == Never
 {
     typealias Scalar = Scalar
-    typealias _Element = AnyTensorElement
+    typealias _Element = AnyTensorElement<Scalar>
 
     private let value: _AnyTensorElement
     
@@ -68,14 +62,10 @@ struct AnyTensorElement<Scalar: TensorElement> : TensorElement
         self.value = value
     }
     
-    static func _subscript(_ self_: Self, at i: Int)
-        -> AnyTensorElement<Scalar>
-    {
-        .init(value: self_.value._anySubscript(at: i))
+    func _subscript(_ i: Int) -> AnyTensorElement<Scalar> {
+        .init(value: value._anySubscript(i))
     }
 
-    static func _count(_ self_: Self) -> Int {
-        return self_.value._count
-    }
+    var _count: Int { value._count }
 }
 

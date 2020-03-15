@@ -50,13 +50,9 @@ struct EagerVector<T: TensorElement> : TensorElement {
     
     typealias _Element = T
     typealias Scalar = _Element.Scalar
-    static func _subscript(_ instance: Self, at i:Int) -> T {
-        return instance.storage[i]
-    }
     
-    static func _count(_ instance: Self) -> Int {
-        return instance.storage.count
-    }
+    func _subscript(_ i:Int) -> T { storage[i] }
+    var _count: Int { storage.count }
 }
 
 class test_TensorElement: XCTestCase {
