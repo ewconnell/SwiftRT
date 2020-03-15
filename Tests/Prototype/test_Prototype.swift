@@ -46,7 +46,11 @@ class test_FixedSizeArray: XCTestCase {
 /// A vector of vectors of... some scalar TensorElement
 struct EagerVector<T: TensorElement> : TensorElement {
     let storage: [T]
-    init(_ storage: [T]) { self.storage = storage }
+    
+    init(_ storage: [T]) {
+        precondition(storage.count > 0)
+        self.storage = storage
+    }
     
     typealias _Element = T
     typealias Scalar = _Element.Scalar
@@ -56,9 +60,13 @@ struct EagerVector<T: TensorElement> : TensorElement {
 }
 
 class test_TensorElement: XCTestCase {
-    func checkConformance<T: TensorElement>(_: T) {}
+    func checkScalarConformance<T: TensorElement>(_ x: T)
+        where T._Element == Never
+    {
+        XCTAssertEqual(x._count, 0)
+    }
     
-    func checkConformance<T: TensorElement>(x: T)
+    func checkConformance<T: TensorElement>(_ x: T)
         where T._Element : TensorElement
     {
         for i in 0..<x.count {
@@ -67,16 +75,39 @@ class test_TensorElement: XCTestCase {
     }
     
     func test_scalars() {
-        checkConformance(0 as Int)
-        checkConformance(0 as UInt)
-        checkConformance(0 as Float)
-        checkConformance(0 as Double)
+        checkScalarConformance(0 as Int)
+        checkScalarConformance(0 as UInt)
+        checkScalarConformance(0 as Float)
+        checkScalarConformance(0 as Double)
     }
 
+    let nested = EagerVector([EagerVector([0, 1, 2, 3]), EagerVector([9])])
+    
     func test_EagerVector() {
         checkConformance(EagerVector([0]))
         checkConformance(EagerVector([0.0]))
-        checkConformance(EagerVector([EagerVector([0.0])]))
+        checkConformance(nested)
+        XCTAssertEqual(nested.count, 2)
+        XCTAssertEqual(nested[1][0], 9)
+        XCTAssertEqual(nested[0][3], 3)
+
+        let inner = nested[0]
+        XCTAssertEqual(inner[0], 0)
+        XCTAssertEqual(inner[1], 1)
+        XCTAssertEqual(inner[2], 2)
+        XCTAssertEqual(inner[3], 3)
+    }
+
+    func test_AnyTensorElement() {
+        let scalar = AnyTensorElement(4)
+        checkConformance(scalar)
+        XCTAssertEqual(scalar[], 4)
+        let vector = AnyTensorElement(nested)
+        checkConformance(vector)
+        for i in 0..<4 {  
+            XCTAssertEqual(vector[0][i][], i)
+        }
+        XCTAssertEqual(vector[1][0][], 9)
     }
 }
 
