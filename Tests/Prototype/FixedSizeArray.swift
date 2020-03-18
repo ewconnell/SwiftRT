@@ -54,6 +54,34 @@ protocol FixedSizeArray : MutableCollection, RandomAccessCollection,
 /// Default implementation of `CustomStringConvertible` conformance.
 extension FixedSizeArray {
     var description: String { "\(Array(self))"}
+    
+    @_transparent
+    func withUnsafeBufferPointer<R>(
+        _ body: (UnsafeBufferPointer<Element>) throws -> R
+    ) rethrows -> R {
+        let count = self.count
+        return try withUnsafePointer(to: self) { p in
+            try body(
+                UnsafeBufferPointer<Element>(
+                    start: UnsafeRawPointer(p)
+                        .assumingMemoryBound(to: Element.self),
+                    count: count))
+        }
+    }
+
+    @_transparent
+    mutating func withUnsafeMutableBufferPointer<R>(
+        _ body: (UnsafeMutableBufferPointer<Element>) throws -> R
+    ) rethrows -> R {
+        let count = self.count
+        return try withUnsafeMutablePointer(to: &self) { p in
+            try body(
+                UnsafeMutableBufferPointer<Element>(
+                    start: UnsafeMutableRawPointer(p)
+                        .assumingMemoryBound(to: Element.self),
+                    count: count))
+        }
+    }
 }
 
 /// A fixed sized collection of 1 element.
