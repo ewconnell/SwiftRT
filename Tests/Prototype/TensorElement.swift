@@ -51,9 +51,11 @@ extension TensorElement where _Element: TensorElement {
     /// Returns the element at index `i`.
     subscript(i: Int) -> Element { _subscript(i) }
 
-    /// The number of subscriptable elements in `self` (always at least 1).
+    /// The number of subscriptable elements in `self`.
+    ///
+    /// Returns 0 when `self` is a scalar.
     var count: Int {
-        assert(_count > 0)
+        assert(_count >= 0)
         return _count
     }
     
