@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 import Foundation
+@_implementationOnly
 import SwiftRTCuda
 import Numerics
 

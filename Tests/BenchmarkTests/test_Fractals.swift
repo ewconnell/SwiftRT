@@ -18,6 +18,7 @@ import Foundation
 import SwiftRT
 
 #if canImport(SwiftRTCuda)
+@_implementationOnly
 import SwiftRTCuda
 #endif
 
