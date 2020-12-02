@@ -9,7 +9,7 @@ add_library(SwiftRTCore
   differentiable/FillDerivatives.swift
   differentiable/MathDerivatives.swift
   differentiable/ReductionDerivatives.swift
-  differentiable/StdlibExtension.swift
+  differentiable/StdlibExtensions.swift
   differentiable/TensorDerivatives.swift
 
   numpy/RankFunctions.swift
@@ -17,7 +17,6 @@ add_library(SwiftRTCore
   numpy/arrayInit.swift
   numpy/eye.swift
 
-  operators/AlgebraicField.swift
   operators/Comparative.swift
   operators/Fill.swift
   operators/Fractals.swift
@@ -29,7 +28,6 @@ add_library(SwiftRTCore
   operators/Pool.swift
   operators/Reductions.swift
 
-  platform/common/TempFloat16.swift
   platform/common/BFloat16.swift
   platform/common/ComplexExtensions.swift
   platform/common/DeviceQueue.swift
